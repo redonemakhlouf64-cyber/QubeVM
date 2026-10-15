@@ -1,0 +1,72 @@
+name: Nyx VM Android Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;30.0.16248370"
+
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential git curl wget unzip zip \
+            make cmake ninja-build meson pkg-config \
+            autoconf automake libtool libtool-bin \
+            flex bison gettext texinfo rsync \
+            python3 python3-pip python3-venv \
+            gtk-doc-tools libglib2.0-dev
+
+      - name: Build QEMU native libraries
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          USE_QEMU_VERSION: '11.1.2'
+          BUILD_HOST: arm64-v8a
+          BUILD_GUEST: x86_64-softmmu
+        run: |
+          export NDK_ROOT="$ANDROID_HOME/ndk/30.0.16248370"
+          cd qube-android-lib/src/main/jni
+          sed -i "s|^NDK_ROOT ?=.*|NDK_ROOT ?= $NDK_ROOT|" \
+            android-config/android-qube-config.mak
+          make qube
+
+      - name: Build release APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease -PuseVenus=false --no-daemon
+
+      - name: Upload APK and native libraries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nyx-vm-build
+          path: |
+            **/build/outputs/apk/**/*.apk
+            qube-android-lib/src/main/jniLibs/**/*.so
+            qube-android-*/src/main/jniLibs/**/*.so
+          if-no-files-found: warn
