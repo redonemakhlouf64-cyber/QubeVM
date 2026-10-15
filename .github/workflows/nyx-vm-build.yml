@@ -44,6 +44,84 @@ jobs:
             python3 python3-pip python3-venv \
             gtk-doc-tools libglib2.0-dev
 
+      - name: Download and prepare native sources
+        working-directory: qube-android-lib/src/main/jni
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Download and extract QEMU
+          curl -fL --retry 3 \
+            https://download.qemu.org/qemu-11.1.2.tar.xz \
+            -o qemu-11.1.2.tar.xz
+          tar -xJf qemu-11.1.2.tar.xz
+          mv qemu-11.1.2 qemu
+
+          # Download and prepare GLib
+          curl -fL --retry 3 \
+            https://download.gnome.org/sources/glib/2.90/glib-2.90.1.tar.xz \
+            -o glib-2.90.1.tar.xz
+          tar -xJf glib-2.90.1.tar.xz
+          mv glib-2.90.1 glib
+          cd glib
+          patch -p1 < ../patches/glib-2.90.1.patch
+          cd ..
+
+          # Download libffi
+          curl -fL --retry 3 \
+            https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz \
+            -o libffi-3.8.0.tar.gz
+          tar -xzf libffi-3.8.0.tar.gz
+          mv libffi-3.8.0 libffi
+
+          # Download and prepare Pixman
+          curl -fL --retry 3 \
+            https://gitlab.freedesktop.org/pixman/pixman/-/archive/pixman-0.46.4/pixman-pixman-0.46.4.tar.gz \
+            -o pixman.tar.gz
+          tar -xzf pixman.tar.gz
+          mv pixman-pixman-0.46.4 pixman
+          cd pixman
+          bash autogen.sh
+          cd ..
+
+          # Download libepoxy
+          curl -fL --retry 3 \
+            https://github.com/anholt/libepoxy/archive/refs/tags/1.5.10.zip \
+            -o libepoxy.zip
+          unzip -q libepoxy.zip
+          mv libepoxy-1.5.10 libepoxy
+
+          # Download libslirp into QEMU's subprojects directory
+          curl -fL --retry 3 \
+            https://gitlab.freedesktop.org/slirp/libslirp/-/archive/v4.9.5/libslirp-v4.9.5.zip \
+            -o libslirp.zip
+          mkdir -p qemu/subprojects
+          unzip -q libslirp.zip -d qemu/subprojects
+          mv qemu/subprojects/libslirp-v4.9.5 \
+            qemu/subprojects/libslirp
+
+          # Apply the QEMU patch
+          cd qemu
+          patch -p1 < ../patches/qemu-11.1.2.patch
+          cd ..
+
+          # Apply the libslirp patch
+          cd qemu/subprojects/libslirp
+          patch -p1 < ../../../patches/libslirp-4.9.5.patch
+          cd ../../..
+
+          # Download and prepare virglrenderer
+          git clone --depth 1 \
+            https://gitlab.freedesktop.org/virgl/virglrenderer.git \
+            virglrenderer
+          cd virglrenderer
+          patch -p1 < ../patches/virglrenderer-1.3.0-android-egl.patch
+          cd ..
+
+          # Verify the required QEMU header exists
+          test -f qemu/include/qemu/typedefs.h
+          echo "QEMU source preparation completed successfully."
+
       - name: Build QEMU native libraries
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
