@@ -122,6 +122,12 @@ jobs:
           test -f qemu/include/qemu/typedefs.h
           echo "QEMU source preparation completed successfully."
 
+      - name: Install modern Meson
+        run: |
+          python3 -m pip install --user --upgrade --break-system-packages "meson>=1.4.0"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/meson" --version
+
       - name: Build QEMU native libraries
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
