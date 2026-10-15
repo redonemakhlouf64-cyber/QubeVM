@@ -81,7 +81,7 @@ jobs:
           tar -xzf pixman.tar.gz
           mv pixman-pixman-0.46.4 pixman
           cd pixman
-          bash autogen.sh
+          test -f meson.build
           cd ..
 
           # Download libepoxy
