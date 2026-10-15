@@ -144,7 +144,7 @@ jobs:
       - name: Build release APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease -PuseVenus=false --no-daemon
+          ./gradlew assembleRelease -PuseVenus=false -PqemuVersion=11.1.2 --no-daemon
 
       - name: Upload APK and native libraries
         if: always()

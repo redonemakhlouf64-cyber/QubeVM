@@ -18,8 +18,8 @@ tasks.register('syncQemuValues') {
 }
 
 // Ensure the qemu values copied before resources are compiled
-tasks.named('preBuild') {
-    dependsOn syncQemuValues
+tasks.named('preBuild').configure {
+    dependsOn(tasks.named('syncQemuValues'))
 }
 
 android {
